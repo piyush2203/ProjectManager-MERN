@@ -1,8 +1,8 @@
 const Task = require("../models/Task");
 
-// @desc    Get all tasks (Admin: all, User: only assigned tasks)
-// @route   GET /api/tasks/
-// @access  Private
+//   Get all tasks (Admin: all, User: only assigned tasks)
+//   GET /api/tasks/
+//   Private
 const getTasks = async (req, res) => {
   try {
     const { status } = req.query;
@@ -77,9 +77,9 @@ const getTasks = async (req, res) => {
   }
 };
 
-// @desc    Get task by ID
-// @route   GET /api/tasks/:id
-// @access  Private
+//     Get task by ID
+//    GET /api/tasks/:id
+//   Private
 const getTaskById = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id).populate(
@@ -95,9 +95,9 @@ const getTaskById = async (req, res) => {
   }
 };
 
-// @desc    Create a new task (Admin only)
-// @route   POST /api/tasks/
-// @access  Private (Admin)
+//     Create a new task (Admin only)
+//    POST /api/tasks/
+//   Private (Admin)
 const createTask = async (req, res) => {
     try {
   const {
@@ -132,9 +132,9 @@ const createTask = async (req, res) => {
   }
 };
 
-// @desc    Update task details
-// @route   PUT /api/tasks/:id
-// @access  Private
+//     Update task details
+//    PUT /api/tasks/:id
+//   Private
 const updateTask = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -164,9 +164,9 @@ const updateTask = async (req, res) => {
   }
 };
 
-// @desc    Delete a task (Admin only)
-// @route   DELETE /api/tasks/:id
-// @access  Private (Admin)
+//     Delete a task (Admin only)
+//    DELETE /api/tasks/:id
+//   Private (Admin)
 const deleteTask = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -180,9 +180,9 @@ const deleteTask = async (req, res) => {
   }
 };
 
-// @desc    Update task status
-// @route   PUT /api/tasks/:id/status
-// @access  Private
+//     Update task status
+//    PUT /api/tasks/:id/status
+//   Private
 const updateTaskStatus = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -214,17 +214,31 @@ const updateTaskStatus = async (req, res) => {
   }
 };
 
-// @desc    Update task checklist
-// @route   PUT /api/tasks/:id/todo
-// @access  Private
+//     Update task checklist
+//    PUT /api/tasks/:id/todo
+//   Private
 const updateTaskChecklist = async (req, res) => {
   try {
     const { todoChecklist } = req.body;
+
+    // 1. Validation: Ensure todoChecklist exists and is an array
+    if (!todoChecklist || !Array.isArray(todoChecklist)) {
+      return res.status(400).json({ message: "Invalid checklist data" });
+    }
+
     const task = await Task.findById(req.params.id);
 
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
+
+
+     // 🔹 Normalize assignedTo into an array
+    const assignedUsers = Array.isArray(task.assignedTo)
+      ? task.assignedTo
+      : task.assignedTo
+      ? [task.assignedTo]
+      : [];
 
     // Verify permission: Only assigned users or admins can update
     // Note: We use .toString() to safely compare MongoDB ObjectIDs
@@ -274,15 +288,157 @@ const updateTaskChecklist = async (req, res) => {
 };
 
 
-// @desc    Dashboard Data (Admin only)
-// @route   GET /api/tasks/dashboard-data
-// @access  Private
-const getDashboardData = async (req, res) => {};
+//     Dashboard Data (Admin only)
+//    GET /api/tasks/dashboard-data
+//   Private
+const getDashboardData = async (req, res) => {
+  try {
+    // Fetch statistics
+    const totalTasks = await Task.countDocuments();
+    const pendingTasks = await Task.countDocuments({ status: "Pending" });
+    const completedTasks = await Task.countDocuments({ status: "Completed" });
+    const overdueTasks = await Task.countDocuments({
+      status: { $ne: "Completed" },
+      dueDate: { $lt: new Date() },
+    });
 
-// @desc    Dashboard Data (User-specific)
-// @route   GET /api/tasks/user-dashboard-data
-// @access  Private
-const getUserDashboardData = async (req, res) => {};
+    // Ensure all possible statuses are included
+    const taskStatuses = ["Pending", "In Progress", "Completed"];
+    const taskDistributionRaw = await Task.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const taskDistribution = taskStatuses.reduce((acc, status) => {
+      const formattedKey = status.replace(/\s+/g, ""); // Remove spaces for response key
+      acc[formattedKey] =
+        taskDistributionRaw.find((item) => item._id === status)?.count || 0;
+      return acc;
+    }, {});
+    taskDistribution["All"] = totalTasks; // Add total count to taskDistribution
+
+    // Ensure all priority levels are included
+    const taskPriorities = ["Low", "Medium", "High"];
+    const taskPriorityLevelsRaw = await Task.aggregate([
+      {
+        $group: {
+          _id: "$priority",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const taskPriorityLevels = taskPriorities.reduce((acc, priority) => {
+      acc[priority] =
+        taskPriorityLevelsRaw.find((item) => item._id === priority)?.count || 0;
+      return acc;
+    }, {});
+
+
+    // Fetch recent 10 tasks
+    const recentTasks = await Task.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select("title status priority dueDate createdAt");
+
+    res.status(200).json({
+      statistics: {
+        totalTasks,
+        pendingTasks,
+        completedTasks,
+        overdueTasks,
+      },
+      charts: {
+        taskDistribution,
+        taskPriorityLevels,
+      },
+      recentTasks,
+    });
+    
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+//     Dashboard Data (User-specific)
+//    GET /api/tasks/user-dashboard-data
+//   Private
+const getUserDashboardData = async (req, res) => {
+  try {
+    const userId = req.user._id; // Only fetch data for the logged-in user
+
+    // Fetch statistics for user-specific tasks
+    const totalTasks = await Task.countDocuments({ assignedTo: userId });
+    const pendingTasks = await Task.countDocuments({
+      assignedTo: userId,
+      status: "Pending",
+    });
+    const completedTasks = await Task.countDocuments({
+      assignedTo: userId,
+      status: "Completed",
+    });
+    const overdueTasks = await Task.countDocuments({
+      assignedTo: userId,
+      status: { $ne: "Completed" },
+      dueDate: { $lt: new Date() },
+    });
+
+    // Task distribution by status
+    const taskStatuses = ["Pending", "In Progress", "Completed"];
+    const taskDistributionRaw = await Task.aggregate([
+      { $match: { assignedTo: userId } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+
+    const taskDistribution = taskStatuses.reduce((acc, status) => {
+      const formattedKey = status.replace(/\s+/g, "");
+      acc[formattedKey] =
+        taskDistributionRaw.find((item) => item._id === status)?.count || 0;
+      return acc;
+    }, {});
+    taskDistribution["All"] = totalTasks;
+
+    // Task distribution by priority
+    const taskPriorities = ["Low", "Medium", "High"];
+    const taskPriorityLevelsRaw = await Task.aggregate([
+      { $match: { assignedTo: userId } },
+      { $group: { _id: "$priority", count: { $sum: 1 } } },
+    ]);
+
+    const taskPriorityLevels = taskPriorities.reduce((acc, priority) => {
+      acc[priority] =
+        taskPriorityLevelsRaw.find((item) => item._id === priority)?.count || 0;
+      return acc;
+    }, {});
+
+    // Fetch recent 10 tasks for the logged-in user
+    const recentTasks = await Task.find({ assignedTo: userId })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select("title status priority dueDate createdAt");
+
+
+    res.status(200).json({
+      statistics: {
+        totalTasks,
+        pendingTasks,
+        completedTasks,
+        overdueTasks,
+      },
+      charts: {
+        taskDistribution,
+        taskPriorityLevels,
+      },
+      recentTasks,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 module.exports = {
   getTasks,
@@ -295,4 +451,3 @@ module.exports = {
   getDashboardData,
   getUserDashboardData,
 };
-
