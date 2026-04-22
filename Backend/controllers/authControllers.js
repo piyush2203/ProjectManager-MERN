@@ -9,9 +9,9 @@ const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
+//     Register a new user
+//    POST /api/auth/register
+//   Public
 const registerUser = async (req, res) => {
   try {
     const { name, email, password, profileImageUrl, adminInviteToken } =
@@ -59,9 +59,9 @@ const registerUser = async (req, res) => {
     }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
+//     Login user
+//    POST /api/auth/login
+//   Public
 const loginUser = async (req, res) => {
     try {
     const { email, password } = req.body;
@@ -93,9 +93,9 @@ const loginUser = async (req, res) => {
   }
 };
 
-// @desc    Get user profile
-// @route   GET /api/auth/profile
-// @access  Private (Requires JWT)
+//     Get user profile
+//    GET /api/auth/profile
+//   Private (Requires JWT)
 const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
@@ -108,9 +108,9 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-// @desc    Update user profile
-// @route   PUT /api/auth/profile
-// @access  Private (Requires JWT)
+//     Update user profile
+//    PUT /api/auth/profile
+//   Private (Requires JWT)
 const updateUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);

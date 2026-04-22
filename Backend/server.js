@@ -22,14 +22,15 @@ connectDB();
 app.use(express.json());
 
 
+// Serve uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+console.log(path.join(__dirname, "uploads"));
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/reports", reportRoutes);
-
-
 
 
 // Start Server

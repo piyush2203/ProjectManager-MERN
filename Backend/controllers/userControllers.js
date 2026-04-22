@@ -2,9 +2,9 @@ const Task = require("../models/Task");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 
-// @desc    Get all users (Admin only)
-// @route   GET /api/users/
-// @access  Private (Admin)
+//     Get all users (Admin only)
+//    GET /api/users/
+//   Private (Admin)
 const getUsers = async (req, res) => {
   try {
     const users = await User.find({ role: "member" }).select("-password");
@@ -40,9 +40,9 @@ const getUsers = async (req, res) => {
   }
 };
 
-// @desc    Get user by ID
-// @route   GET /api/users/:id
-// @access  Private
+//     Get user by ID
+//    GET /api/users/:id
+//   Private
 const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("-password");
