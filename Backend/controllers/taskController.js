@@ -374,15 +374,15 @@ const getUserDashboardData = async (req, res) => {
     // Fetch statistics for user-specific tasks
     const totalTasks = await Task.countDocuments({ assignedTo: userId });
     const pendingTasks = await Task.countDocuments({
-      assignedTo: userId,
+      assignedTo: { $in: [userId] },
       status: "Pending",
     });
     const completedTasks = await Task.countDocuments({
-      assignedTo: userId,
+      assignedTo: { $in: [userId] },
       status: "Completed",
     });
     const overdueTasks = await Task.countDocuments({
-      assignedTo: userId,
+      assignedTo: { $in: [userId] },
       status: { $ne: "Completed" },
       dueDate: { $lt: new Date() },
     });
@@ -390,7 +390,7 @@ const getUserDashboardData = async (req, res) => {
     // Task distribution by status
     const taskStatuses = ["Pending", "In Progress", "Completed"];
     const taskDistributionRaw = await Task.aggregate([
-      { $match: { assignedTo: userId } },
+      { $match: { assignedTo: { $in: [userId] } } },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
@@ -405,7 +405,7 @@ const getUserDashboardData = async (req, res) => {
     // Task distribution by priority
     const taskPriorities = ["Low", "Medium", "High"];
     const taskPriorityLevelsRaw = await Task.aggregate([
-      { $match: { assignedTo: userId } },
+      { $match: { assignedTo: { $in: [userId] } } },
       { $group: { _id: "$priority", count: { $sum: 1 } } },
     ]);
 
@@ -416,7 +416,7 @@ const getUserDashboardData = async (req, res) => {
     }, {});
 
     // Fetch recent 10 tasks for the logged-in user
-    const recentTasks = await Task.find({ assignedTo: userId })
+    const recentTasks = await Task.find({ assignedTo: { $in: [userId] } })
       .sort({ createdAt: -1 })
       .limit(10)
       .select("title status priority dueDate createdAt");

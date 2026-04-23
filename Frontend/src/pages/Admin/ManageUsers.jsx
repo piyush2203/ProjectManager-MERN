@@ -20,11 +20,53 @@ const ManageUsers = () => {
     }
   };
 
-  const handleDownloadReport = () => {
-    // Implement the logic to download the user report
-    // This could involve making an API call to get the report data and then triggering a download
-    console.log("Download Report Clicked");
-  };
+  // download task report
+const handleDownloadReport = async () => {
+  try {
+    const response = await axiosInstance.get(
+      API_PATHS.REPORTS.EXPORT_USERS,
+      {
+        responseType: "blob",
+      }
+    );
+
+    // Get filename from header (if backend sends it)
+    const contentDisposition = response.headers["content-disposition"];
+    let fileName = "user_details.xlsx";
+
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="?(.+)"?/);
+      if (fileNameMatch.length === 2) {
+        fileName = fileNameMatch[1];
+      }
+    }
+
+    // Create blob link
+    const blob = new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error("Error downloading report:", error);
+
+    // Better error handling
+    if (error.response) {
+      alert(`Error: ${error.response.status}`);
+    } else {
+      alert("Network error. Please try again.");
+    }
+  }
+};
 
   useEffect(() => {
     getAllUsers();

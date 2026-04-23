@@ -315,7 +315,7 @@ const CreateTask = () => {
               </label>
 
               <AddAttachmentsInput
-                attachments={taskData?.attachments}
+                attachments={taskData?.attachments || []}
                 setAttachments={(value) =>
                   handleValueChange("attachments", value)
                 }
